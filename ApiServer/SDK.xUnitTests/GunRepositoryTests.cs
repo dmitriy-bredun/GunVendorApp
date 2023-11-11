@@ -17,12 +17,12 @@ namespace SDK.xUnitTests
 
         public async void After_Create_Find_Should_Return_1RecordWithCorrectFields()
         {
+            var exteptedCountOfGuns = 1;
             var gunName = "P38";
             uint damage = 100;
             uint price = 350;
             var gunType = GunType.Pistol;
             var elementalEffects = ElementalEffects.Incendiary;
-            var exteptedCountOfGuns = 1;
             var gun = new Gun(gunName, damage, price, gunType, elementalEffects);
             await gunRepository.Create(gun);
 
@@ -30,7 +30,6 @@ namespace SDK.xUnitTests
             var resultGun = results.FirstOrDefault();
 
             Assert.Equal(exteptedCountOfGuns, results.Count());
-
             Assert.NotNull(resultGun);
             Assert.Equal(gunName, resultGun.Name);
             Assert.Equal(damage, resultGun.DamagePerSecond);
@@ -187,6 +186,106 @@ namespace SDK.xUnitTests
             var gunFromRepository = await gunRepository.Get(fakeId);
 
             Assert.Null(gunFromRepository);
+        }
+
+        [Fact]
+        public async void Update_Should_Change_Only_Allowed_Fields()
+        {
+            var originalId = Guid.NewGuid().ToString();
+            var originalGunName = "MG69";
+            uint originalDamage = 100;
+            uint originalPrice = 350;
+            var originalGunType = GunType.Pistol;
+            var originalElementalEffects = ElementalEffects.Incendiary;
+            var originalRegistrationDateTime = DateTime.Now;
+
+            var originalGun = Gun.FromPersistance(originalId, originalGunName, originalDamage, originalPrice, originalGunType, originalElementalEffects, originalRegistrationDateTime);
+            await gunRepository.Create(originalGun);
+
+
+            var updatedGunName = "KIRA_THE_BEST_KILLER";
+            uint updatedDamage = 10;
+            uint updatedPrice = 10;
+            var updatedGunType = GunType.SubMachine;
+            var updatedElementalEffects = ElementalEffects.None;
+            var updatedRegistrationDateTime = originalRegistrationDateTime.AddDays(10);
+            var updatedGun = Gun.FromPersistance
+            (
+                originalId,
+                updatedGunName, //====
+                updatedDamage, 
+                updatedPrice,   //====
+                updatedGunType,
+                updatedElementalEffects,
+                updatedRegistrationDateTime
+            );
+
+            await gunRepository.Update(updatedGun);
+
+            var resultAfterUpdate = await gunRepository.Get(originalId);
+
+            Assert.Equal(resultAfterUpdate.Id.ToString(), originalId);
+            Assert.Equal(resultAfterUpdate.Name, updatedGunName);
+            Assert.Equal(resultAfterUpdate.DamagePerSecond, originalDamage);
+            Assert.Equal(resultAfterUpdate.Price, updatedPrice);
+            Assert.Equal(resultAfterUpdate.Type, originalGunType);
+            Assert.Equal(resultAfterUpdate.ElementalEffects, originalElementalEffects);
+            Assert.Equal(resultAfterUpdate.RegistrationDateTime, originalRegistrationDateTime);
+        }
+
+        [Fact]
+        public async Task Update_Should_ThrowException_WhenRecord_IsNotExist()
+        {
+            var originalId = Guid.NewGuid().ToString();
+            var originalGunName = "MG69";
+            uint originalDamage = 100;
+            uint originalPrice = 350;
+            var originalGunType = GunType.Pistol;
+            var originalElementalEffects = ElementalEffects.Incendiary;
+            var originalRegistrationDateTime = DateTime.Now;
+
+            var originalGun = Gun.FromPersistance(originalId, originalGunName, originalDamage, originalPrice, originalGunType, originalElementalEffects, originalRegistrationDateTime);
+            await gunRepository.Create(originalGun);
+
+            var updatedGunName = "KIRA_THE_BEST_KILLER";
+            uint updatedDamage = 10;
+            uint updatedPrice = 10;
+            var updatedGunType = GunType.SubMachine;
+            var updatedElementalEffects = ElementalEffects.None;
+            var updatedRegistrationDateTime = originalRegistrationDateTime.AddDays(10);
+            var updatedGun = Gun.FromPersistance
+            (
+                Guid.NewGuid().ToString(),
+                updatedGunName, //====
+                updatedDamage,
+                updatedPrice,   //====
+                updatedGunType,
+                updatedElementalEffects,
+                updatedRegistrationDateTime
+            );
+
+            await Assert.ThrowsAsync<Exception>(() => gunRepository.Update(updatedGun));
+        }
+
+        [Fact]
+        public async void Delete_Works_Properly()
+        {
+            var gun1 = new Gun("GunName", 100, 1000, GunType.Pistol, ElementalEffects.None);
+            var gun2 = new Gun("GunName", 100, 1000, GunType.Pistol, ElementalEffects.None);
+            var gun3 = new Gun("GunName", 100, 1000, GunType.Pistol, ElementalEffects.None);
+            var gun4 = new Gun("GunName", 100, 1000, GunType.Pistol, ElementalEffects.None);
+            var gun5 = new Gun("GunName", 100, 1000, GunType.Pistol, ElementalEffects.None);
+            AddRecordsToRepository(new List<Gun>() { gun1, gun2, gun3, gun4, gun5 });
+
+            var records = await gunRepository.Find(new GunSearchCriteria());
+            foreach (var record in records)
+            {
+                await gunRepository.Delete(record.Id.ToString());
+            }
+
+            var result = await gunRepository.Find(new GunSearchCriteria());
+
+            Assert.Empty(result);
         }
 
 
